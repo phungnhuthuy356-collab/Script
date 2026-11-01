@@ -1,114 +1,227 @@
---[[
-    HUYNHUT VIP
-    STEAL AN EGG
-    VERSION 1.0
-]]
+-- HUYNHUT VIP V2.0
+-- STEAL AN EGG
+-- Original Dashboard + Steal Panel
 
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
+local UIS = game:GetService("UserInputService")
 
 local Player = Players.LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
-
-local Purple = Color3.fromRGB(165, 70, 255)
-local Dark = Color3.fromRGB(20, 15, 30)
-local White = Color3.fromRGB(255, 255, 255)
-
 local Gui = Instance.new("ScreenGui")
-Gui.Name = "HUYNHUT_VIP"
+Gui.Name = "HUYNHUT_VIP_V2"
 Gui.ResetOnSpawn = false
-Gui.Parent = PlayerGui
+Gui.Parent = Player:WaitForChild("PlayerGui")
 
+local Purple = Color3.fromRGB(135, 75, 255)
+local Dark = Color3.fromRGB(20, 20, 28)
+local Card = Color3.fromRGB(35, 35, 46)
+local White = Color3.fromRGB(255,255,255)
+
+local function corner(obj, radius)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, radius)
+    c.Parent = obj
+end
+
+local function makeButton(parent, name, size, pos)
+    local b = Instance.new("TextButton")
+    b.Name = name
+    b.Size = size
+    b.Position = pos
+    b.BackgroundColor3 = Card
+    b.TextColor3 = White
+    b.Text = name
+    b.TextSize = 14
+    b.Font = Enum.Font.GothamBold
+    b.Parent = parent
+    corner(b, 9)
+    return b
+end
+
+-- Main dashboard
 local Main = Instance.new("Frame")
-Main.Size = UDim2.fromOffset(350, 400)
-Main.Position = UDim2.new(0.5, -175, 0.5, -200)
+Main.Size = UDim2.fromScale(0.66, 0.68)
+Main.Position = UDim2.fromScale(0.17, 0.15)
 Main.BackgroundColor3 = Dark
-Main.BorderSizePixel = 0
 Main.Parent = Gui
-
-Instance.new("UICorner", Main).CornerRadius =
-    UDim.new(0, 14)
+corner(Main, 14)
 
 local Stroke = Instance.new("UIStroke")
 Stroke.Color = Purple
 Stroke.Thickness = 2
 Stroke.Parent = Main
 
-local function Label(parent, text, size, pos)
-    local obj = Instance.new("TextLabel")
-    obj.Size = size
-    obj.Position = pos
-    obj.BackgroundTransparency = 1
-    obj.Text = text
-    obj.TextColor3 = White
-    obj.TextSize = 16
-    obj.Font = Enum.Font.GothamBold
-    obj.Parent = parent
-    return obj
+local Header = Instance.new("TextLabel")
+Header.Size = UDim2.new(1, 0, 0, 45)
+Header.BackgroundTransparency = 1
+Header.Text = "HUYNHUT VIP  |  V2.0"
+Header.TextColor3 = White
+Header.TextSize = 20
+Header.Font = Enum.Font.GothamBold
+Header.Parent = Main
+
+local Welcome = Instance.new("TextLabel")
+Welcome.Size = UDim2.new(1, -24, 0, 45)
+Welcome.Position = UDim2.fromOffset(12, 52)
+Welcome.BackgroundColor3 = Card
+Welcome.Text = "WELCOME, " .. Player.Name
+Welcome.TextColor3 = White
+Welcome.Font = Enum.Font.GothamBold
+Welcome.TextSize = 15
+Welcome.Parent = Main
+corner(Welcome, 9)
+
+local Dashboard = Instance.new("Frame")
+Dashboard.Size = UDim2.new(0.58, -12, 0, 220)
+Dashboard.Position = UDim2.fromOffset(12, 110)
+Dashboard.BackgroundColor3 = Card
+Dashboard.Parent = Main
+corner(Dashboard, 10)
+
+local Stats = Instance.new("TextLabel")
+Stats.Size = UDim2.new(1, -16, 1, -16)
+Stats.Position = UDim2.fromOffset(8, 8)
+Stats.BackgroundTransparency = 1
+Stats.Text = "GAME INFORMATION\n\nPlayer: "..Player.Name..
+    "\nGame: Steal an Egg\nVersion: V2.0\nStatus: Ready"
+Stats.TextColor3 = White
+Stats.TextSize = 14
+Stats.Font = Enum.Font.Gotham
+Stats.TextXAlignment = Enum.TextXAlignment.Left
+Stats.TextYAlignment = Enum.TextYAlignment.Top
+Stats.Parent = Dashboard
+
+local Updates = Instance.new("Frame")
+Updates.Size = UDim2.new(0.42, -12, 0, 220)
+Updates.Position = UDim2.new(0.58, 0, 0, 110)
+Updates.BackgroundColor3 = Card
+Updates.Parent = Main
+corner(Updates, 10)
+
+local UpdateText = Instance.new("TextLabel")
+UpdateText.Size = UDim2.new(1, -12, 1, -12)
+UpdateText.Position = UDim2.fromOffset(6, 6)
+UpdateText.BackgroundTransparency = 1
+UpdateText.Text = "LATEST UPDATES\n\n• New Dashboard\n• Egg Finder UI\n• Rarity Filter\n• Mobile Support"
+UpdateText.TextColor3 = White
+UpdateText.TextSize = 13
+UpdateText.Font = Enum.Font.Gotham
+UpdateText.TextXAlignment = Enum.TextXAlignment.Left
+UpdateText.TextYAlignment = Enum.TextYAlignment.Top
+UpdateText.Parent = Updates
+
+local OpenPanel = makeButton(
+    Main, "OPEN STEAL PANEL",
+    UDim2.new(0.55, 0, 0, 40),
+    UDim2.new(0.225, 0, 1, -52)
+)
+OpenPanel.BackgroundColor3 = Purple
+
+local Close = makeButton(
+    Main, "X",
+    UDim2.fromOffset(35, 32),
+    UDim2.new(1, -42, 0, 7)
+)
+
+-- Steal panel
+local Panel = Instance.new("Frame")
+Panel.Size = UDim2.fromScale(0.29, 0.65)
+Panel.Position = UDim2.new(0.69, 0, 0.17, 0)
+Panel.BackgroundColor3 = Dark
+Panel.Visible = false
+Panel.Parent = Gui
+corner(Panel, 12)
+
+local PanelStroke = Instance.new("UIStroke")
+PanelStroke.Color = Purple
+PanelStroke.Thickness = 2
+PanelStroke.Parent = Panel
+
+local PanelTitle = Instance.new("TextLabel")
+PanelTitle.Size = UDim2.new(1, 0, 0, 38)
+PanelTitle.BackgroundTransparency = 1
+PanelTitle.Text = "STEAL PANEL"
+PanelTitle.TextColor3 = White
+PanelTitle.TextSize = 17
+PanelTitle.Font = Enum.Font.GothamBold
+PanelTitle.Parent = Panel
+
+local Sort = makeButton(
+    Panel, "SORT BEST RARITY",
+    UDim2.new(1, -16, 0, 32),
+    UDim2.fromOffset(8, 42)
+)
+Sort.BackgroundColor3 = Purple
+
+local Filter = makeButton(
+    Panel, "EGGS: ALL",
+    UDim2.new(1, -16, 0, 32),
+    UDim2.fromOffset(8, 80)
+)
+
+local List = Instance.new("ScrollingFrame")
+List.Size = UDim2.new(1, -12, 1, -126)
+List.Position = UDim2.fromOffset(6, 120)
+List.BackgroundTransparency = 1
+List.ScrollBarThickness = 3
+List.CanvasSize = UDim2.fromOffset(0, 0)
+List.Parent = Panel
+
+local Layout = Instance.new("UIListLayout")
+Layout.Padding = UDim.new(0, 7)
+Layout.Parent = List
+
+-- Demo data: replace with data from an authorized game interface
+local Eggs = {
+    {name = "Divine Egg", rarity = 5, price = "Divine"},
+    {name = "Secret Egg", rarity = 4, price = "Secret"},
+    {name = "Mythic Egg", rarity = 3, price = "Mythic"},
+    {name = "Legendary Egg", rarity = 2, price = "Legendary"},
+    {name = "Rare Egg", rarity = 1, price = "Rare"}
+}
+
+local function render()
+    for _, child in ipairs(List:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+
+    for _, egg in ipairs(Eggs) do
+        local item = makeButton(
+            List,
+            egg.name .. "  |  " .. egg.price,
+            UDim2.new(1, -8, 0, 42),
+            UDim2.new()
+        )
+        item.TextSize = 12
+        item.MouseButton1Click:Connect(function()
+            print("Selected:", egg.name)
+        end)
+    end
+
+    List.CanvasSize = UDim2.fromOffset(
+        0, #Eggs * 49
+    )
 end
 
-Label(
-    Main,
-    "HUYNHUT VIP",
-    UDim2.new(1, 0, 0, 45),
-    UDim2.fromOffset(0, 0)
-)
-
-Label(
-    Main,
-    "STEAL AN EGG  |  V1.0",
-    UDim2.new(1, 0, 0, 25),
-    UDim2.fromOffset(0, 40)
-)
-
-local function Button(name, y, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.88, 0, 0, 38)
-    btn.Position = UDim2.new(0.06, 0, 0, y)
-    btn.BackgroundColor3 = Color3.fromRGB(65, 35, 95)
-    btn.Text = name
-    btn.TextColor3 = White
-    btn.TextSize = 14
-    btn.Font = Enum.Font.GothamBold
-    btn.Parent = Main
-
-    Instance.new("UICorner", btn).CornerRadius =
-        UDim.new(0, 8)
-
-    btn.MouseButton1Click:Connect(callback)
-    return btn
-end
-
-local selected = "Divine"
-
-local status = Label(
-    Main,
-    "TARGET: Divine",
-    UDim2.new(1, 0, 0, 30),
-    UDim2.fromOffset(0, 95)
-)
-
-Button("👑 DIVINE", 130, function()
-    selected = "Divine"
-    status.Text = "TARGET: " .. selected
+Sort.MouseButton1Click:Connect(function()
+    table.sort(Eggs, function(a, b)
+        return a.rarity > b.rarity
+    end)
+    render()
 end)
 
-Button("🌌 SECRET", 175, function()
-    selected = "Secret"
-    status.Text = "TARGET: " .. selected
+Filter.MouseButton1Click:Connect(function()
+    Filter.Text = Filter.Text == "EGGS: ALL"
+        and "EGGS: DIVINE" or "EGGS: ALL"
 end)
 
-Button("⭐ MYTHIC", 220, function()
-    selected = "Mythic"
-    status.Text = "TARGET: " .. selected
+OpenPanel.MouseButton1Click:Connect(function()
+    Panel.Visible = not Panel.Visible
 end)
 
-Button("🔍 EGG FINDER", 265, function()
-    status.Text = "Finder UI selected: " .. selected
+Close.MouseButton1Click:Connect(function()
+    Main.Visible = false
 end)
 
-Button("❌ CLOSE HUB", 330, function()
-    Gui:Destroy()
-end)
-
-print("HUYNHUT VIP LOADED!")--
+render()
