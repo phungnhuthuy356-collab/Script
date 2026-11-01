@@ -1,0 +1,171 @@
+-- [[ STEAL AN EGG - AUTO GET PET GUI ]] --
+-- [[ TikTok Tag: lauca ]] --
+
+local Rayfield = nil -- Hoặc sử dụng Orion Library bên dưới
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+
+-- 1. TẠO WATERMARK TIKTOK Ở GÓC TRÊN BÊN PHẢI
+local ScreenGui = Instance.new("ScreenGui")
+local TikTokLabel = Instance.new("TextLabel")
+
+ScreenGui.Name = "LauCaWatermarkGui"
+ScreenGui.Parent = game.CoreGui or game.Players.LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+TikTokLabel.Name = "TikTokLabel"
+TikTokLabel.Parent = ScreenGui
+TikTokLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+TikTokLabel.BackgroundTransparency = 0.3
+TikTokLabel.Position = UDim2.new(1, -160, 0, 10) -- Góc trên bên phải
+TikTokLabel.Size = UDim2.new(0, 150, 0, 30)
+TikTokLabel.Font = Enum.Font.SourceSansBold
+TikTokLabel.Text = "TikTok: lauca"
+TikTokLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TikTokLabel.TextSize = 16.000
+TikTokLabel.BorderSizePixel = 0
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = TikTokLabel
+
+-- 2. TẠO CẤU TRÚC GUI VỚI ORION LIBRARY (TÍCH HỢP NÚT PHÓNG TO / THU NHỎ & NÚT X)
+local Window = OrionLib:MakeWindow({
+    Name = "Steal An Egg | TikTok: lauca", 
+    HidePremium = false, 
+    SaveConfig = true, 
+    ConfigFolder = "StealEggLauCa",
+    IntroText = "Steal An Egg Hub - lauca"
+})
+
+-- Biến lưu trữ cấu hình
+local TargetPetName = ""
+local TargetPetAmount = 0
+local IsAutoGetActive = false
+local LocalPlayer = game.Players.LocalPlayer
+
+-- TAB CHÍNH: AUTO STEAL PET
+local MainTab = Window:MakeTab({
+    Name = "Auto Steal",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+MainTab:AddSection({
+    Name = "Cấu Hình Pet & Tiền"
+})
+
+-- Ô nhập Tên Pet
+MainTab:AddTextbox({
+    Name = "Tên Pet Muốn Lấy",
+    Default = "",
+    TextDisappear = false,
+    Callback = function(Value)
+        TargetPetName = Value
+        print("Đã chọn Pet:", TargetPetName)
+    end
+})
+
+-- Ô nhập Số Tiền
+MainTab:AddTextbox({
+    Name = "Số Tiền / Giá Trị Pet",
+    Default = "0",
+    TextDisappear = false,
+    Callback = function(Value)
+        TargetPetAmount = tonumber(Value) or 0
+        print("Số tiền mong muốn:", TargetPetAmount)
+    end
+})
+
+-- Toggle Kích Hoạt Auto
+MainTab:AddToggle({
+    Name = "Bật Auto Dịch Chuyển & Lấy Pet",
+    Default = false,
+    Callback = function(Value)
+        IsAutoGetActive = Value
+        if IsAutoGetActive then
+            OrionLib:MakeNotification({
+                Name = "Đã Bật Auto!",
+                Content = "Đang quét pet: " .. TargetPetName,
+                Image = "rbxassetid://4483345998",
+                Time = 3
+            })
+            
+            -- Chạy luồng Auto Teleport & Grab
+            task.spawn(function()
+                while IsAutoGetActive do
+                    local character = LocalPlayer.Character
+                    if character and character:FindFirstChild("HumanoidRootPart") then
+                        local savedCFrame = character.HumanoidRootPart.CFrame -- Lưu vị trí gốc ban đầu
+                        
+                        -- Tìm kiếm Pet/Trứng trong Workspace (Tùy thuộc vào model game Steal an Egg)
+                        local targetEggOrPet = nil
+                        for _, obj in pairs(workspace:GetDescendants()) do
+                            if obj:IsA("Model") or obj:IsA("BasePart") then
+                                if string.find(string.lower(obj.Name), string.lower(TargetPetName)) and TargetPetName ~= "" then
+                                    targetEggOrPet = obj
+                                    break
+                                end
+                            end
+                        end
+
+                        if targetEggOrPet then
+                            local targetPos = targetEggOrPet:IsA("Model") and targetEggOrPet:GetPivot() or targetEggOrPet.CFrame
+                            
+                            -- 1. Teleport đến Pet
+                            character.HumanoidRootPart.CFrame = targetPos + Vector3.new(0, 3, 0)
+                            task.wait(0.5) -- Đợi nhặt pet
+                            
+                            -- 2. Thực hiện hành động tương tác (Ví dụ nhấp/ProximityPrompt)
+                            for _, prompt in pairs(targetEggOrPet:GetDescendants()) do
+                                if prompt:IsA("ProximityPrompt") then
+                                    fireproximityprompt(prompt)
+                                end
+                            end
+                            
+                            task.wait(0.5)
+                            
+                            -- 3. Auto bay về vị trí ban đầu
+                            character.HumanoidRootPart.CFrame = savedCFrame
+                            OrionLib:MakeNotification({
+                                Name = "Thành công!",
+                                Content = "Đã lấy xong pet và bay về căn cứ!",
+                                Image = "rbxassetid://4483345998",
+                                Time = 2
+                            })
+                        end
+                    end
+                    task.wait(2) -- Khoảng thời gian giữa mỗi lần quét
+                end
+            end)
+        end
+    end
+})
+
+-- TAB THÔNG TIN NGƯỜI CHƠI
+local InfoTab = Window:MakeTab({
+    Name = "Thông Tin",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+InfoTab:AddSection({
+    Name = "Player Status"
+})
+
+local NameLabel = InfoTab:AddLabel("Tên Người Chơi: " .. LocalPlayer.DisplayName .. " (@" .. LocalPlayer.Name .. ")")
+local UserIdLabel = InfoTab:AddLabel("User ID: " .. LocalPlayer.UserId)
+local StatusLabel = InfoTab:AddLabel("Trạng thái Auto: Đang Tắt")
+
+-- Cập nhật trạng thái người chơi liên tục
+task.spawn(function()
+    while task.wait(1) do
+        if IsAutoGetActive then
+            StatusLabel:Set("Trạng thái Auto: 🟢 ĐANG CHẠY (" .. TargetPetName .. ")")
+        else
+            StatusLabel:Set("Trạng thái Auto: 🔴 ĐÃ TẮT")
+        end
+    end
+end)
+
+-- Khởi tạo Orion GUI
+OrionLib:Init()
