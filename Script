@@ -1,117 +1,114 @@
--- [[ CUSTOM FLOATING UI & STEAL PANEL - TIKTOK: lauca ]] --
-local CoreGui = game:GetService("CoreGui")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+--[[
+    HUYNHUT VIP
+    STEAL AN EGG
+    VERSION 1.0
+]]
 
--- Xóa GUI cũ nếu đã tồn tại để tránh trùng lặp khi test
-if CoreGui:FindFirstChild("LauCaCustomHub") then
-    CoreGui.FindFirstChild("LauCaCustomHub"):Destroy()
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+local Purple = Color3.fromRGB(165, 70, 255)
+local Dark = Color3.fromRGB(20, 15, 30)
+local White = Color3.fromRGB(255, 255, 255)
+
+local Gui = Instance.new("ScreenGui")
+Gui.Name = "HUYNHUT_VIP"
+Gui.ResetOnSpawn = false
+Gui.Parent = PlayerGui
+
+local Main = Instance.new("Frame")
+Main.Size = UDim2.fromOffset(350, 400)
+Main.Position = UDim2.new(0.5, -175, 0.5, -200)
+Main.BackgroundColor3 = Dark
+Main.BorderSizePixel = 0
+Main.Parent = Gui
+
+Instance.new("UICorner", Main).CornerRadius =
+    UDim.new(0, 14)
+
+local Stroke = Instance.new("UIStroke")
+Stroke.Color = Purple
+Stroke.Thickness = 2
+Stroke.Parent = Main
+
+local function Label(parent, text, size, pos)
+    local obj = Instance.new("TextLabel")
+    obj.Size = size
+    obj.Position = pos
+    obj.BackgroundTransparency = 1
+    obj.Text = text
+    obj.TextColor3 = White
+    obj.TextSize = 16
+    obj.Font = Enum.Font.GothamBold
+    obj.Parent = parent
+    return obj
 end
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "LauCaCustomHub"
-ScreenGui.Parent = CoreGui
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+Label(
+    Main,
+    "HUYNHUT VIP",
+    UDim2.new(1, 0, 0, 45),
+    UDim2.fromOffset(0, 0)
+)
 
--- 1. TẠO THANH FLOATING TOGGLE CHÍNH (Giống khung dài có icon lửa ở giữa màn hình)
-local MainToggleFrame = Instance.new("Frame")
-MainToggleFrame.Name = "MainToggleFrame"
-MainToggleFrame.Parent = ScreenGui
-MainToggleFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-MainToggleFrame.BackgroundTransparency = 0.2
-MainToggleFrame.Position = UDim2.new(0.5, -110, 0.75, 0)
-MainToggleFrame.Size = UDim2.new(0, 220, 0, 45)
-MainToggleFrame.BorderSizePixel = 0
+Label(
+    Main,
+    "STEAL AN EGG  |  V1.0",
+    UDim2.new(1, 0, 0, 25),
+    UDim2.fromOffset(0, 40)
+)
 
-local UICornerMain = Instance.new("UICorner")
-UICornerMain.CornerRadius = UDim.new(1, 0) -- Bo tròn dạng viên thuốc (pill shape)
-UICornerMain.Parent = MainToggleFrame
+local function Button(name, y, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.88, 0, 0, 38)
+    btn.Position = UDim2.new(0.06, 0, 0, y)
+    btn.BackgroundColor3 = Color3.fromRGB(65, 35, 95)
+    btn.Text = name
+    btn.TextColor3 = White
+    btn.TextSize = 14
+    btn.Font = Enum.Font.GothamBold
+    btn.Parent = Main
 
--- Icon / Text hiển thị trạng thái
-local StatusText = Instance.new("TextLabel")
-StatusText.Parent = MainToggleFrame
-StatusText.BackgroundTransparency = 1
-StatusText.Position = UDim2.new(0, 45, 0, 0)
-StatusText.Size = UDim2.new(0, 110, 1, 0)
-StatusText.Font = Enum.Font.SourceSansBold
-StatusText.Text = "Auto Steal: OFF"
-StatusText.TextColor3 = Color3.fromRGB(255, 255, 255)
-StatusText.TextSize = 14
+    Instance.new("UICorner", btn).CornerRadius =
+        UDim.new(0, 8)
 
--- Nút Toggle Bật/Tắt (Màu đỏ/xanh)
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Parent = MainToggleFrame
-ToggleButton.BackgroundColor3 = Color3.fromRGB(230, 50, 50) -- Đỏ (Off)
-ToggleButton.Position = UDim2.new(1, -55, 0.5, -15)
-ToggleButton.Size = UDim2.new(0, 45, 0, 30)
-ToggleButton.Text = ""
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
 
-local UICornerBtn = Instance.new("UICorner")
-UICornerBtn.CornerRadius = UDim.new(1, 0)
-UICornerBtn.Parent = ToggleButton
+local selected = "Divine"
 
-local isRunning = false
-ToggleButton.MouseButton1Click:Connect(function()
-    isRunning = not isRunning
-    if isRunning then
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50) -- Xanh (On)
-        StatusText.Text = "Auto Steal: ON"
-    else
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(230, 50, 50) -- Đỏ (Off)
-        StatusText.Text = "Auto Steal: OFF"
-    end
+local status = Label(
+    Main,
+    "TARGET: Divine",
+    UDim2.new(1, 0, 0, 30),
+    UDim2.fromOffset(0, 95)
+)
+
+Button("👑 DIVINE", 130, function()
+    selected = "Divine"
+    status.Text = "TARGET: " .. selected
 end)
 
-
--- 2. TẠO BẢNG "STEAL PANEL" BÊN PHẢI (Giống khung danh sách pet trong hình)
-local StealPanel = Instance.new("Frame")
-StealPanel.Name = "StealPanel"
-StealPanel.Parent = ScreenGui
-StealPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-StealPanel.BackgroundTransparency = 0.1
-StealPanel.Position = UDim2.new(1, -210, 0.3, 0)
-StealPanel.Size = UDim2.new(0, 200, 0, 250)
-StealPanel.BorderSizePixel = 0
-
-local UICornerPanel = Instance.new("UICorner")
-UICornerPanel.CornerRadius = UDim.new(0, 8)
-UICornerPanel.Parent = StealPanel
-
--- Tiêu đề Panel
-local PanelTitle = Instance.new("TextLabel")
-PanelTitle.Parent = StealPanel
-PanelTitle.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-PanelTitle.Size = UDim2.new(1, 0, 0, 30)
-PanelTitle.Font = Enum.Font.SourceSansBold
-PanelTitle.Text = "Steal Panel [Sort: Best Rarity]"
-PanelTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-PanelTitle.TextSize, PanelTitle.BorderSizePixel = 13, 0
-
-local UICornerTitle = Instance.new("UICorner")
-UICornerTitle.CornerRadius = UDim.new(0, 8)
-UICornerTitle.Parent = PanelTitle
-
--- Nút thu nhỏ/đóng panel (Nút kiểu chữ X hoặc mũi tên bên phải)
-local ClosePanelBtn = Instance.new("TextButton")
-ClosePanelBtn.Parent = StealPanel
-ClosePanelBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-ClosePanelBtn.Position = UDim2.new(1, -25, 0, 5)
-ClosePanelBtn.Size = UDim2.new(0, 20, 0, 20)
-ClosePanelBtn.Text = "X"
-ClosePanelBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ClosePanelBtn.Font = Enum.Font.SourceSansBold
-ClosePanelBtn.TextSize = 12
-
-local isOpen = true
-ClosePanelBtn.MouseButton1Click:Connect(function()
-    isOpen = not isOpen
-    for _, child in pairs(StealPanel:GetChildren()) do
-        if child ~= PanelTitle and child ~= ClosePanelBtn and child:IsA("GuiObject") then
-            child.Visible = isOpen
-        end
-    end
-    StealPanel.Size = isOpen and UDim2.new(0, 200, 0, 250) or UDim2.new(0, 200, 0, 30)
+Button("🌌 SECRET", 175, function()
+    selected = "Secret"
+    status.Text = "TARGET: " .. selected
 end)
 
-print("LauCa Custom UI Loaded Successfully!")
+Button("⭐ MYTHIC", 220, function()
+    selected = "Mythic"
+    status.Text = "TARGET: " .. selected
+end)
 
+Button("🔍 EGG FINDER", 265, function()
+    status.Text = "Finder UI selected: " .. selected
+end)
+
+Button("❌ CLOSE HUB", 330, function()
+    Gui:Destroy()
+end)
+
+print("HUYNHUT VIP LOADED!")--
