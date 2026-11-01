@@ -1,171 +1,117 @@
--- [[ STEAL AN EGG - AUTO GET PET GUI ]] --
--- [[ TikTok Tag: lauca ]] --
+-- [[ CUSTOM FLOATING UI & STEAL PANEL - TIKTOK: lauca ]] --
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
-local Rayfield = nil -- Hoặc sử dụng Orion Library bên dưới
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+-- Xóa GUI cũ nếu đã tồn tại để tránh trùng lặp khi test
+if CoreGui:FindFirstChild("LauCaCustomHub") then
+    CoreGui.FindFirstChild("LauCaCustomHub"):Destroy()
+end
 
--- 1. TẠO WATERMARK TIKTOK Ở GÓC TRÊN BÊN PHẢI
 local ScreenGui = Instance.new("ScreenGui")
-local TikTokLabel = Instance.new("TextLabel")
-
-ScreenGui.Name = "LauCaWatermarkGui"
-ScreenGui.Parent = game.CoreGui or game.Players.LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.Name = "LauCaCustomHub"
+ScreenGui.Parent = CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-TikTokLabel.Name = "TikTokLabel"
-TikTokLabel.Parent = ScreenGui
-TikTokLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-TikTokLabel.BackgroundTransparency = 0.3
-TikTokLabel.Position = UDim2.new(1, -160, 0, 10) -- Góc trên bên phải
-TikTokLabel.Size = UDim2.new(0, 150, 0, 30)
-TikTokLabel.Font = Enum.Font.SourceSansBold
-TikTokLabel.Text = "TikTok: lauca"
-TikTokLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TikTokLabel.TextSize = 16.000
-TikTokLabel.BorderSizePixel = 0
+-- 1. TẠO THANH FLOATING TOGGLE CHÍNH (Giống khung dài có icon lửa ở giữa màn hình)
+local MainToggleFrame = Instance.new("Frame")
+MainToggleFrame.Name = "MainToggleFrame"
+MainToggleFrame.Parent = ScreenGui
+MainToggleFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+MainToggleFrame.BackgroundTransparency = 0.2
+MainToggleFrame.Position = UDim2.new(0.5, -110, 0.75, 0)
+MainToggleFrame.Size = UDim2.new(0, 220, 0, 45)
+MainToggleFrame.BorderSizePixel = 0
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 8)
-UICorner.Parent = TikTokLabel
+local UICornerMain = Instance.new("UICorner")
+UICornerMain.CornerRadius = UDim.new(1, 0) -- Bo tròn dạng viên thuốc (pill shape)
+UICornerMain.Parent = MainToggleFrame
 
--- 2. TẠO CẤU TRÚC GUI VỚI ORION LIBRARY (TÍCH HỢP NÚT PHÓNG TO / THU NHỎ & NÚT X)
-local Window = OrionLib:MakeWindow({
-    Name = "Steal An Egg | TikTok: lauca", 
-    HidePremium = false, 
-    SaveConfig = true, 
-    ConfigFolder = "StealEggLauCa",
-    IntroText = "Steal An Egg Hub - lauca"
-})
+-- Icon / Text hiển thị trạng thái
+local StatusText = Instance.new("TextLabel")
+StatusText.Parent = MainToggleFrame
+StatusText.BackgroundTransparency = 1
+StatusText.Position = UDim2.new(0, 45, 0, 0)
+StatusText.Size = UDim2.new(0, 110, 1, 0)
+StatusText.Font = Enum.Font.SourceSansBold
+StatusText.Text = "Auto Steal: OFF"
+StatusText.TextColor3 = Color3.fromRGB(255, 255, 255)
+StatusText.TextSize = 14
 
--- Biến lưu trữ cấu hình
-local TargetPetName = ""
-local TargetPetAmount = 0
-local IsAutoGetActive = false
-local LocalPlayer = game.Players.LocalPlayer
+-- Nút Toggle Bật/Tắt (Màu đỏ/xanh)
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Parent = MainToggleFrame
+ToggleButton.BackgroundColor3 = Color3.fromRGB(230, 50, 50) -- Đỏ (Off)
+ToggleButton.Position = UDim2.new(1, -55, 0.5, -15)
+ToggleButton.Size = UDim2.new(0, 45, 0, 30)
+ToggleButton.Text = ""
 
--- TAB CHÍNH: AUTO STEAL PET
-local MainTab = Window:MakeTab({
-    Name = "Auto Steal",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
+local UICornerBtn = Instance.new("UICorner")
+UICornerBtn.CornerRadius = UDim.new(1, 0)
+UICornerBtn.Parent = ToggleButton
 
-MainTab:AddSection({
-    Name = "Cấu Hình Pet & Tiền"
-})
-
--- Ô nhập Tên Pet
-MainTab:AddTextbox({
-    Name = "Tên Pet Muốn Lấy",
-    Default = "",
-    TextDisappear = false,
-    Callback = function(Value)
-        TargetPetName = Value
-        print("Đã chọn Pet:", TargetPetName)
-    end
-})
-
--- Ô nhập Số Tiền
-MainTab:AddTextbox({
-    Name = "Số Tiền / Giá Trị Pet",
-    Default = "0",
-    TextDisappear = false,
-    Callback = function(Value)
-        TargetPetAmount = tonumber(Value) or 0
-        print("Số tiền mong muốn:", TargetPetAmount)
-    end
-})
-
--- Toggle Kích Hoạt Auto
-MainTab:AddToggle({
-    Name = "Bật Auto Dịch Chuyển & Lấy Pet",
-    Default = false,
-    Callback = function(Value)
-        IsAutoGetActive = Value
-        if IsAutoGetActive then
-            OrionLib:MakeNotification({
-                Name = "Đã Bật Auto!",
-                Content = "Đang quét pet: " .. TargetPetName,
-                Image = "rbxassetid://4483345998",
-                Time = 3
-            })
-            
-            -- Chạy luồng Auto Teleport & Grab
-            task.spawn(function()
-                while IsAutoGetActive do
-                    local character = LocalPlayer.Character
-                    if character and character:FindFirstChild("HumanoidRootPart") then
-                        local savedCFrame = character.HumanoidRootPart.CFrame -- Lưu vị trí gốc ban đầu
-                        
-                        -- Tìm kiếm Pet/Trứng trong Workspace (Tùy thuộc vào model game Steal an Egg)
-                        local targetEggOrPet = nil
-                        for _, obj in pairs(workspace:GetDescendants()) do
-                            if obj:IsA("Model") or obj:IsA("BasePart") then
-                                if string.find(string.lower(obj.Name), string.lower(TargetPetName)) and TargetPetName ~= "" then
-                                    targetEggOrPet = obj
-                                    break
-                                end
-                            end
-                        end
-
-                        if targetEggOrPet then
-                            local targetPos = targetEggOrPet:IsA("Model") and targetEggOrPet:GetPivot() or targetEggOrPet.CFrame
-                            
-                            -- 1. Teleport đến Pet
-                            character.HumanoidRootPart.CFrame = targetPos + Vector3.new(0, 3, 0)
-                            task.wait(0.5) -- Đợi nhặt pet
-                            
-                            -- 2. Thực hiện hành động tương tác (Ví dụ nhấp/ProximityPrompt)
-                            for _, prompt in pairs(targetEggOrPet:GetDescendants()) do
-                                if prompt:IsA("ProximityPrompt") then
-                                    fireproximityprompt(prompt)
-                                end
-                            end
-                            
-                            task.wait(0.5)
-                            
-                            -- 3. Auto bay về vị trí ban đầu
-                            character.HumanoidRootPart.CFrame = savedCFrame
-                            OrionLib:MakeNotification({
-                                Name = "Thành công!",
-                                Content = "Đã lấy xong pet và bay về căn cứ!",
-                                Image = "rbxassetid://4483345998",
-                                Time = 2
-                            })
-                        end
-                    end
-                    task.wait(2) -- Khoảng thời gian giữa mỗi lần quét
-                end
-            end)
-        end
-    end
-})
-
--- TAB THÔNG TIN NGƯỜI CHƠI
-local InfoTab = Window:MakeTab({
-    Name = "Thông Tin",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
-
-InfoTab:AddSection({
-    Name = "Player Status"
-})
-
-local NameLabel = InfoTab:AddLabel("Tên Người Chơi: " .. LocalPlayer.DisplayName .. " (@" .. LocalPlayer.Name .. ")")
-local UserIdLabel = InfoTab:AddLabel("User ID: " .. LocalPlayer.UserId)
-local StatusLabel = InfoTab:AddLabel("Trạng thái Auto: Đang Tắt")
-
--- Cập nhật trạng thái người chơi liên tục
-task.spawn(function()
-    while task.wait(1) do
-        if IsAutoGetActive then
-            StatusLabel:Set("Trạng thái Auto: 🟢 ĐANG CHẠY (" .. TargetPetName .. ")")
-        else
-            StatusLabel:Set("Trạng thái Auto: 🔴 ĐÃ TẮT")
-        end
+local isRunning = false
+ToggleButton.MouseButton1Click:Connect(function()
+    isRunning = not isRunning
+    if isRunning then
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50) -- Xanh (On)
+        StatusText.Text = "Auto Steal: ON"
+    else
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(230, 50, 50) -- Đỏ (Off)
+        StatusText.Text = "Auto Steal: OFF"
     end
 end)
 
--- Khởi tạo Orion GUI
-OrionLib:Init()
+
+-- 2. TẠO BẢNG "STEAL PANEL" BÊN PHẢI (Giống khung danh sách pet trong hình)
+local StealPanel = Instance.new("Frame")
+StealPanel.Name = "StealPanel"
+StealPanel.Parent = ScreenGui
+StealPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+StealPanel.BackgroundTransparency = 0.1
+StealPanel.Position = UDim2.new(1, -210, 0.3, 0)
+StealPanel.Size = UDim2.new(0, 200, 0, 250)
+StealPanel.BorderSizePixel = 0
+
+local UICornerPanel = Instance.new("UICorner")
+UICornerPanel.CornerRadius = UDim.new(0, 8)
+UICornerPanel.Parent = StealPanel
+
+-- Tiêu đề Panel
+local PanelTitle = Instance.new("TextLabel")
+PanelTitle.Parent = StealPanel
+PanelTitle.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+PanelTitle.Size = UDim2.new(1, 0, 0, 30)
+PanelTitle.Font = Enum.Font.SourceSansBold
+PanelTitle.Text = "Steal Panel [Sort: Best Rarity]"
+PanelTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+PanelTitle.TextSize, PanelTitle.BorderSizePixel = 13, 0
+
+local UICornerTitle = Instance.new("UICorner")
+UICornerTitle.CornerRadius = UDim.new(0, 8)
+UICornerTitle.Parent = PanelTitle
+
+-- Nút thu nhỏ/đóng panel (Nút kiểu chữ X hoặc mũi tên bên phải)
+local ClosePanelBtn = Instance.new("TextButton")
+ClosePanelBtn.Parent = StealPanel
+ClosePanelBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+ClosePanelBtn.Position = UDim2.new(1, -25, 0, 5)
+ClosePanelBtn.Size = UDim2.new(0, 20, 0, 20)
+ClosePanelBtn.Text = "X"
+ClosePanelBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClosePanelBtn.Font = Enum.Font.SourceSansBold
+ClosePanelBtn.TextSize = 12
+
+local isOpen = true
+ClosePanelBtn.MouseButton1Click:Connect(function()
+    isOpen = not isOpen
+    for _, child in pairs(StealPanel:GetChildren()) do
+        if child ~= PanelTitle and child ~= ClosePanelBtn and child:IsA("GuiObject") then
+            child.Visible = isOpen
+        end
+    end
+    StealPanel.Size = isOpen and UDim2.new(0, 200, 0, 250) or UDim2.new(0, 200, 0, 30)
+end)
+
+print("LauCa Custom UI Loaded Successfully!")
+
