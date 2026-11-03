@@ -1,123 +1,35 @@
--- [[ Steal an Egg - Ultimate Script by Huynhut ]] --
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
+-- Gọi thư viện giao diện Venyx UI Library
+local Venyx = loadstring(game:HttpGet("https://raw.githubusercontent.com/GreenD1st/Venyx-UI-Library/main/source.lua"))()
+local window = Venyx.new("Venyx x Chilli | Steal An Egg")
 
-local LocalPlayer = Players.LocalPlayer
+-- Tạo các Tab (Trang chủ, Tính năng, Cài đặt)
+local tab1 = window:addPage("Trang Chủ", 6023426915) -- Thay ID icon nếu muốn
+local tab2 = window:addPage("Auto Steal", 6023426915)
+local tab3 = window:addPage("Cài Đặt", 6023426915)
 
--- Xóa GUI cũ nếu lỡ chạy lại script
-if CoreGui:FindFirstChild("StealAnEggGUI") then
-    CoreGui.StealAnEggGUI:Destroy()
-end
+-- 1. Trang chủ: Hiển thị thông tin tài khoản giống ảnh
+local homeSection = tab1:addSection("Thông tin người chơi")
+homeSection:addLabel("Tên tài khoản: " .. game.Players.LocalPlayer.Name)
+homeStatusLabel = homeSection:addLabel("Trạng thái: Đang kết nối (No Key)")
 
--- Tạo ScreenGui chính
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "StealAnEggGUI"
-ScreenGui.Parent = CoreGui
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
--- Tạo Main Frame (Giao diện chính)
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-MainFrame.BorderSizePixel = 0
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
-MainFrame.Size = UDim2.new(0, 300, 0, 350)
-MainFrame.Active = true
-MainFrame.Draggable = true -- Cho phép kéo thả bảng menu thoải mái
-
--- Bo góc giao diện
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 10)
-UICorner.Parent = MainFrame
-
--- Tiêu đề
-local Title = Instance.new("TextLabel")
-Title.Name = "Title"
-Title.Parent = MainFrame
-Title.BackgroundColor3 = Color3.fromRGB(45, 45, 70)
-Title.BorderSizePixel = 0
-Title.Size = UDim2.new(1, 0, 0, 45)
-Title.Font = Enum.Font.GothamBold
-Title.Text = "🥚 STEAL AN EGG - VIP MENU"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 14
-
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 10)
-TitleCorner.Parent = Title
-
--- Nút Đóng GUI
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Name = "CloseBtn"
-CloseBtn.Parent = Title
-CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
-CloseBtn.Position = UDim2.new(1, -35, 0.5, -12)
-CloseBtn.Size = UDim2.new(0, 24, 0, 24)
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = 12
-
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 6)
-CloseCorner.Parent = CloseBtn
-
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
+homeSection:addToggle("Anti Guard (Chống bảo vệ)", false, function(value)
+    print("Anti Guard:", value)
+    -- Viết code bật/tắt chống bảo vệ tại đây
 end)
 
--- Hàm tạo các nút chức năng
-local function createButton(name, posY, callback)
-    local btn = Instance.new("TextButton")
-    btn.Name = name
-    btn.Parent = MainFrame
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
-    btn.Position = UDim2.new(0.1, 0, 0, posY)
-    btn.Size = UDim2.new(0.8, 0, 0, 40)
-    btn.Font = Enum.Font.GothamSemibold
-    btn.Text = name
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 13
+-- 2. Tab Auto Steal: Các tính năng chính để trộm trứng
+local stealSection = tab2:addSection("Tính năng chính")
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = btn
-
-    local active = false
-    btn.MouseButton1Click:Connect(function()
-        active = not active
-        if active then
-            btn.BackgroundColor3 = Color3.fromRGB(46, 204, 113) -- Đổi sang màu xanh khi bật
-        else
-            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
-        end
-        callback(active)
-    end)
-end
-
--- Trạng thái các tính năng
-local autoCollect = false
-local speedHack = false
-local espEggs = false
-
--- 1. Tính năng Auto Collect Egg (Tự động nhặt trứng xung quanh)
-createButton("Auto Collect Eggs", 60, function(state)
-    autoCollect = state
+stealSection:addToggle("Auto Steal Eggs (Tự động trộm trứng)", false, function(value)
+    _G.AutoSteal = value
     task.spawn(function()
-        while autoCollect do
+        while _G.AutoSteal do
             task.wait(0.5)
             pcall(function()
-                for _, obj in pairs(Workspace:GetDescendants()) do
-                    if obj:IsA("Model") and obj.Name:lower():find("egg") then
-                        if obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("BasePart") then
-                            local targetPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("BasePart")
-                            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                                LocalPlayer.Character.HumanoidRootPart.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
-                            end
-                        end
+                -- Code dịch chuyển hoặc tương tác với trứng ở đây
+                for _, obj in pairs(workspace:GetChildren()) do
+                    if obj.Name:lower():find("egg") and obj:FindFirstChild("TouchInterest") then
+                        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = obj.CFrame
                     end
                 end
             end)
@@ -125,81 +37,28 @@ createButton("Auto Collect Eggs", 60, function(state)
     end)
 end)
 
--- 2. Tính năng Speed Hack (Chạy siêu tốc)
-createButton("Super Speed (WalkSpeed)", 115, function(state)
-    speedHack = state
-    RunService.RenderStepped:Connect(function()
-        if speedHack and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = 35 -- Tốc độ siêu nhanh
-        elseif not speedHack and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = 16 -- Mặc định
-        end
-    end)
+stealSection:addToggle("Teleport to Egg (Dịch chuyển đến trứng)", false, function(value)
+    print("Teleport to Egg:", value)
 end)
 
--- 3. Tính năng ESP Eggs (Nhìn xuyên tường thấy vị trí Trứng)
-createButton("ESP Eggs (Highlight)", 170, function(state)
-    espEggs = state
-    while espEggs do
-        task.wait(1)
-        pcall(function()
-            for _, obj in pairs(Workspace:GetDescendants()) do
-                if obj:IsA("Model") and obj.Name:lower():find("egg") then
-                    if not obj:FindFirstChild("Highlight_Egg") then
-                        local highlight = Instance.new("Highlight")
-                        highlight.Name = "Highlight_Egg"
-                        highlight.Adornee = obj
-                        highlight.FillColor = Color3.fromRGB(255, 215, 0) -- Màu vàng kim
-                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        highlight.Parent = obj
-                    end
-                end
-            end
-        end)
-    end
-    -- Xóa highlight khi tắt
-    if not espEggs then
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("Model") and obj:FindFirstChild("Highlight_Egg") then
-                obj.Highlight_Egg:Destroy()
-            end
-        end
-    end
+stealSection:addButton("Discord Venyx", function()
+    setclipboard("https://discord.gg/venyx") -- Copy link discord vào bộ nhớ tạm
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Thông báo",
+        Text = "Đã sao chép link Discord!",
+        Duration = 3
+    })
 end)
 
--- 4. Nút Teleport về Base / Safezone (An toàn)
-local tpBtn = Instance.new("TextButton")
-tpBtn.Name = "TeleportSafe"
-tpBtn.Parent = MainFrame
-tpBtn.BackgroundColor3 = Color3.fromRGB(230, 126, 34)
-tpBtn.Position = UDim2.new(0.1, 0, 0, 225)
-tpBtn.Size = UDim2.new(0.8, 0, 0, 40)
-tpBtn.Font = Enum.Font.GothamSemibold
-tpBtn.Text = "Teleport Safezone"
-tpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-tpBtn.TextSize = 13
-
-local tpCorner = Instance.new("UICorner")
-tpCorner.CornerRadius = UDim.new(0, 6)
-tpCorner.Parent = tpBtn
-
-tpBtn.MouseButton1Click:Connect(function()
-    pcall(function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            -- Dịch chuyển về tọa độ an toàn (có thể tùy chỉnh lại Vector3 theo map game)
-            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 10, 0)
-        end
-    end)
+-- 3. Tab Cài đặt
+local settingSection = tab3:addSection("Hệ thống")
+settingSection:addButton("Đóng Menu / Hủy Script", function()
+    window:Teardown() -- Đóng UI
 end)
 
--- Watermark chữ kí dưới cùng
-local Credit = Instance.new("TextLabel")
-Credit.Name = "Credit"
-Credit.Parent = MainFrame
-Credit.BackgroundTransparency = 1
-Credit.Position = UDim2.new(0, 0, 1, -25)
-Credit.Size = UDim2.new(1, 0, 0, 20)
-Credit.Font = Enum.Font.GothamItalic
-Credit.Text = "Script by Huynhut | Have Fun!"
-Credit.TextColor3 = Color3.fromRGB(150, 150, 180)
-Credit.TextSize = 10--
+-- Hiển thị thông báo khi load xong script
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Chilli Hub",
+    Text = "Load giao diện thành công!",
+    Duration = 4
+})
