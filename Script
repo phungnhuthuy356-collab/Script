@@ -1,64 +1,522 @@
--- Gọi thư viện giao diện Venyx UI Library
-local Venyx = loadstring(game:HttpGet("https://raw.githubusercontent.com/GreenD1st/Venyx-UI-Library/main/source.lua"))()
-local window = Venyx.new("Venyx x Chilli | Steal An Egg")
+-- ====================================================================
+-- STEAL AN EGG - LIGHTNING EDITION SCRIPT
+-- Compatible with all UNC-supported Executors (Solara, Wave, Delta, etc.)
+-- ====================================================================
 
--- Tạo các Tab (Trang chủ, Tính năng, Cài đặt)
-local tab1 = window:addPage("Trang Chủ", 6023426915) -- Thay ID icon nếu muốn
-local tab2 = window:addPage("Auto Steal", 6023426915)
-local tab3 = window:addPage("Cài Đặt", 6023426915)
+local CoreServices = {
+    Players = game:GetService("Players"),
+    TweenService = game:GetService("TweenService"),
+    RunService = game:GetService("RunService"),
+    UserInputService = game:GetService("UserInputService"),
+    Workspace = game:GetService("Workspace"),
+    CollectionService = game:GetService("CollectionService"),
+    ReplicatedStorage = game:GetService("ReplicatedStorage")
+}
 
--- 1. Trang chủ: Hiển thị thông tin tài khoản giống ảnh
-local homeSection = tab1:addSection("Thông tin người chơi")
-homeSection:addLabel("Tên tài khoản: " .. game.Players.LocalPlayer.Name)
-homeStatusLabel = homeSection:addLabel("Trạng thái: Đang kết nối (No Key)")
+local LocalPlayer = CoreServices.Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
 
-homeSection:addToggle("Anti Guard (Chống bảo vệ)", false, function(value)
-    print("Anti Guard:", value)
-    -- Viết code bật/tắt chống bảo vệ tại đây
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    Humanoid = Character:WaitForChild("Humanoid")
+    RootPart = Character:WaitForChild("HumanoidRootPart")
 end)
 
--- 2. Tab Auto Steal: Các tính năng chính để trộm trứng
-local stealSection = tab2:addSection("Tính năng chính")
+-- State Variables
+local Config = {
+    SelectedEgg = "",
+    AutoStealActive = false,
+    AntiKnockback = true,
+    PreventDrop = true,
+    SavedPosition = nil,
+    StealSpeed = 0.3
+}
 
-stealSection:addToggle("Auto Steal Eggs (Tự động trộm trứng)", false, function(value)
-    _G.AutoSteal = value
-    task.spawn(function()
-        while _G.AutoSteal do
-            task.wait(0.5)
-            pcall(function()
-                -- Code dịch chuyển hoặc tương tác với trứng ở đây
-                for _, obj in pairs(workspace:GetChildren()) do
-                    if obj.Name:lower():find("egg") and obj:FindFirstChild("TouchInterest") then
-                        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = obj.CFrame
-                    end
+-- List of identified islands/eggs
+local EggLocations = {}
+
+-- ====================================================================
+-- ANTI-KNOCKBACK & NO-DROP PROTECTION ENGINE
+-- ====================================================================
+local function ApplyProtection()
+    CoreServices.RunService.Heartbeat:Connect(function()
+        if Config.AntiKnockback and Character and Character:FindFirstChild("HumanoidRootPart") then
+            -- Set linear velocity stabilization to counteract monster impulses
+            local root = Character.HumanoidRootPart
+            local velocity = root.AssemblyLinearVelocity
+            root.AssemblyLinearVelocity = Vector3.new(0, math.clamp(velocity.Y, -50, 50), 0)
+
+            -- Prevent ragdoll or falling states
+            if Humanoid then
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
+            end
+        end
+
+        if Config.PreventDrop and Character then
+            -- Lock tools/eggs in character hierarchy to prevent dropping on hit
+            for _, item in ipairs(Character:GetChildren()) do
+                if item:IsA("Tool") or item.Name:lower():find("egg") then
+                    item.CanBeDropped = false
                 end
-            end)
+            end
         end
     end)
+end
+ApplyProtection()
+
+-- ====================================================================
+-- ENVIRONMENT SCANNERS
+-- ====================================================================
+local function ScanMapEntities()
+    table.clear(EggLocations)
+
+    -- Scan workspace for Eggs or Islands
+    local searchContainers = {
+        CoreServices.Workspace:FindFirstChild("Eggs"),
+        CoreServices.Workspace:FindFirstChild("Islands"),
+        CoreServices.Workspace:FindFirstChild("Map"),
+        CoreServices.Workspace
+    }
+
+    for _, container in ipairs(searchContainers) do
+        if container then
+            for _, obj in ipairs(container:GetDescendants()) do
+                if obj:IsA("Model") or obj:IsA("BasePart") then
+                    local name = obj.Name
+                    if name:lower():find("egg") or name:lower():find("island") or obj:FindFirstChildOfClass("ProximityPrompt") then
+                        if not table.find(EggLocations, name) then
+                            table.insert(EggLocations, name)
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if #EggLocations == 0 then
+        EggLocations = {"Trứng Thường", "Trứng Hiếm", "Trứng Huyền Thoại", "Đảo Rồng", "Đảo Băng"}
+    end
+end
+ScanMapEntities()
+
+-- Helper to get player's money
+local function GetPlayerMoney()
+    local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+    if leaderstats then
+        local coin = leaderstats:FindFirstChild("Coins") or leaderstats:FindFirstChild("Money") or leaderstats:FindFirstChild("Cash") or leaderstats:FindFirstChild("Gems")
+        if coin then return tostring(coin.Value) end
+    end
+    return "0"
+end
+
+-- ====================================================================
+-- UI BUILDER (LIGHTNING THEME / CYBER ELECTRIC)
+-- ====================================================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "LightningStealEggUI"
+ScreenGui.ResetOnSpawn = false
+
+-- Protect GUI from detection if executor supports gethui/syn.protect_gui
+if gethui then
+    ScreenGui.Parent = gethui()
+elseif syn and syn.protect_gui then
+    syn.protect_gui(ScreenGui)
+    ScreenGui.Parent = CoreServices.CoreGui
+else
+    ScreenGui.Parent = CoreServices.Players.LocalPlayer:WaitForChild("PlayerGui")
+end
+
+-- Main Window
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 520, 0, 360)
+MainFrame.Position = UDim2.new(0.5, -260, 0.5, -180)
+MainFrame.BackgroundColor3 = Color3.fromRGB(12, 14, 22)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+-- Lightning Neon Border Effect
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Thickness = 2
+UIStroke.Color = Color3.fromRGB(0, 229, 255)
+UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+UIStroke.Parent = MainFrame
+
+local UIGradient = Instance.new("UIGradient")
+UIGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 229, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(147, 51, 234)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 229, 255))
+}
+UIGradient.Rotation = 45
+UIGradient.Parent = UIStroke
+
+-- Animate Lightning Border
+CoreServices.RunService.RenderStepped:Connect(function()
+    UIGradient.Rotation = (UIGradient.Rotation + 2) % 360
 end)
 
-stealSection:addToggle("Teleport to Egg (Dịch chuyển đến trứng)", false, function(value)
-    print("Teleport to Egg:", value)
+-- Title Header
+local Header = Instance.new("Frame")
+Header.Name = "Header"
+Header.Size = UDim2.new(1, 0, 0, 45)
+Header.BackgroundColor3 = Color3.fromRGB(18, 20, 32)
+Header.BorderSizePixel = 0
+Header.Parent = MainFrame
+
+local HeaderCorner = Instance.new("UICorner")
+HeaderCorner.CornerRadius = UDim.new(0, 10)
+HeaderCorner.Parent = Header
+
+local TitleText = Instance.new("TextLabel")
+TitleText.Size = UDim2.new(1, -50, 1, 0)
+TitleText.Position = UDim2.new(0, 15, 0, 0)
+TitleText.BackgroundTransparency = 1
+TitleText.Text = "STEAL AN EGG | LIGHTNING HUB"
+TitleText.TextColor3 = Color3.fromRGB(0, 229, 255)
+TitleText.TextSize = 16
+TitleText.Font = Enum.Font.GothamBold
+TitleText.TextXAlignment = Enum.TextXAlignment.Left
+TitleText.Parent = Header
+
+-- Close Button
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -38, 0, 8)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 45, 85)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 14
+CloseBtn.Parent = Header
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseCorner.Parent = CloseBtn
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
 end)
 
-stealSection:addButton("Discord Venyx", function()
-    setclipboard("https://discord.gg/venyx") -- Copy link discord vào bộ nhớ tạm
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Thông báo",
-        Text = "Đã sao chép link Discord!",
-        Duration = 3
-    })
+-- Content Area Frame
+local Content = Instance.new("Frame")
+Content.Size = UDim2.new(1, -20, 1, -65)
+Content.Position = UDim2.new(0, 10, 0, 55)
+Content.BackgroundTransparency = 1
+Content.Parent = MainFrame
+
+-- Left Panel: Info Dashboard
+local InfoPanel = Instance.new("Frame")
+InfoPanel.Size = UDim2.new(0.42, 0, 1, 0)
+InfoPanel.BackgroundColor3 = Color3.fromRGB(18, 22, 34)
+InfoPanel.BorderSizePixel = 0
+InfoPanel.Parent = Content
+
+local InfoCorner = Instance.new("UICorner")
+InfoCorner.CornerRadius = UDim.new(0, 8)
+InfoCorner.Parent = InfoPanel
+
+local InfoTitle = Instance.new("TextLabel")
+InfoTitle.Size = UDim2.new(1, 0, 0, 30)
+InfoTitle.BackgroundTransparency = 1
+InfoTitle.Text = "THÔNG TIN PLAYER"
+InfoTitle.TextColor3 = Color3.fromRGB(180, 130, 255)
+InfoTitle.Font = Enum.Font.GothamBold
+InfoTitle.TextSize = 13
+InfoTitle.Parent = InfoPanel
+
+local MoneyLabel = Instance.new("TextLabel")
+MoneyLabel.Size = UDim2.new(1, -20, 0, 25)
+MoneyLabel.Position = UDim2.new(0, 10, 0, 35)
+MoneyLabel.BackgroundTransparency = 1
+MoneyLabel.Text = "Tiền: $0"
+MoneyLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+MoneyLabel.Font = Enum.Font.GothamMedium
+MoneyLabel.TextSize = 13
+MoneyLabel.TextXAlignment = Enum.TextXAlignment.Left
+MoneyLabel.Parent = InfoPanel
+
+local SelectedPetLabel = Instance.new("TextLabel")
+SelectedPetLabel.Size = UDim2.new(1, -20, 0, 25)
+SelectedPetLabel.Position = UDim2.new(0, 10, 0, 65)
+SelectedPetLabel.BackgroundTransparency = 1
+SelectedPetLabel.Text = "Trứng Chọn: Chưa Chọn"
+SelectedPetLabel.TextColor3 = Color3.fromRGB(0, 229, 255)
+SelectedPetLabel.Font = Enum.Font.GothamMedium
+SelectedPetLabel.TextSize = 12
+SelectedPetLabel.TextXAlignment = Enum.TextXAlignment.Left
+SelectedPetLabel.Parent = InfoPanel
+
+-- Pet Visual Preview Frame
+local PetPreviewBox = Instance.new("Frame")
+PetPreviewBox.Size = UDim2.new(1, -20, 0, 120)
+PetPreviewBox.Position = UDim2.new(0, 10, 0, 100)
+PetPreviewBox.BackgroundColor3 = Color3.fromRGB(10, 12, 18)
+PetPreviewBox.Parent = InfoPanel
+
+local PetPreviewCorner = Instance.new("UICorner")
+PetPreviewCorner.CornerRadius = UDim.new(0, 6)
+PetPreviewCorner.Parent = PetPreviewBox
+
+local PetVisualIcon = Instance.new("TextLabel")
+PetVisualIcon.Size = UDim2.new(1, 0, 1, 0)
+PetVisualIcon.BackgroundTransparency = 1
+PetVisualIcon.Text = "[ Hình Dạng Trứng ]"
+PetVisualIcon.TextColor3 = Color3.fromRGB(150, 150, 180)
+PetVisualIcon.Font = Enum.Font.GothamBold
+PetVisualIcon.TextSize = 14
+PetVisualIcon.Parent = PetPreviewBox
+
+-- Right Panel: Controls & Teleport
+local ControlPanel = Instance.new("Frame")
+ControlPanel.Size = UDim2.new(0.56, 0, 1, 0)
+ControlPanel.Position = UDim2.new(0.44, 0, 0, 0)
+ControlPanel.BackgroundColor3 = Color3.fromRGB(18, 22, 34)
+ControlPanel.BorderSizePixel = 0
+ControlPanel.Parent = Content
+
+local ControlCorner = Instance.new("UICorner")
+ControlCorner.CornerRadius = UDim.new(0, 8)
+ControlCorner.Parent = ControlPanel
+
+-- Target Selector Dropdown
+local DropdownLabel = Instance.new("TextLabel")
+DropdownLabel.Size = UDim2.new(1, -20, 0, 20)
+DropdownLabel.Position = UDim2.new(0, 10, 0, 10)
+DropdownLabel.BackgroundTransparency = 1
+DropdownLabel.Text = "CHỌN ĐẢO / TRỨNG CẦN LẤY:"
+DropdownLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
+DropdownLabel.Font = Enum.Font.GothamBold
+DropdownLabel.TextSize = 11
+DropdownLabel.TextXAlignment = Enum.TextXAlignment.Left
+DropdownLabel.Parent = ControlPanel
+
+local SelectBtn = Instance.new("TextButton")
+SelectBtn.Size = UDim2.new(1, -20, 0, 32)
+SelectBtn.Position = UDim2.new(0, 10, 0, 32)
+SelectBtn.BackgroundColor3 = Color3.fromRGB(28, 32, 48)
+SelectBtn.Text = "Click Để Chọn Đảo"
+SelectBtn.TextColor3 = Color3.fromRGB(0, 229, 255)
+SelectBtn.Font = Enum.Font.GothamMedium
+SelectBtn.TextSize = 12
+SelectBtn.Parent = ControlPanel
+
+local SelectCorner = Instance.new("UICorner")
+SelectCorner.CornerRadius = UDim.new(0, 6)
+SelectCorner.Parent = SelectBtn
+
+-- Teleport & Steal Action Button
+local TeleportBtn = Instance.new("TextButton")
+TeleportBtn.Size = UDim2.new(1, -20, 0, 38)
+TeleportBtn.Position = UDim2.new(0, 10, 0, 75)
+TeleportBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 216)
+TeleportBtn.Text = "DỊCH CHUYỂN & AUTO CƯỚP TRỨNG"
+TeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TeleportBtn.Font = Enum.Font.GothamBold
+TeleportBtn.TextSize = 12
+TeleportBtn.Parent = ControlPanel
+
+local TeleportCorner = Instance.new("UICorner")
+TeleportCorner.CornerRadius = UDim.new(0, 6)
+TeleportCorner.Parent = TeleportBtn
+
+-- Toggle Anti-Knockback
+local AntiKbToggle = Instance.new("TextButton")
+AntiKbToggle.Size = UDim2.new(1, -20, 0, 32)
+AntiKbToggle.Position = UDim2.new(0, 10, 0, 122)
+AntiKbToggle.BackgroundColor3 = Color3.fromRGB(35, 140, 75)
+AntiKbToggle.Text = "CHỐNG Quái Đánh Văng: [BẬT]"
+AntiKbToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+AntiKbToggle.Font = Enum.Font.GothamBold
+AntiKbToggle.TextSize = 11
+AntiKbToggle.Parent = ControlPanel
+
+local AntiKbCorner = Instance.new("UICorner")
+AntiKbCorner.CornerRadius = UDim.new(0, 6)
+AntiKbCorner.Parent = AntiKbToggle
+
+-- Toggle Prevent Drop
+local PreventDropToggle = Instance.new("TextButton")
+PreventDropToggle.Size = UDim2.new(1, -20, 0, 32)
+PreventDropToggle.Position = UDim2.new(0, 10, 0, 162)
+PreventDropToggle.BackgroundColor3 = Color3.fromRGB(35, 140, 75)
+PreventDropToggle.Text = "CHỐNG RỚT TRỨNG: [BẬT]"
+PreventDropToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+PreventDropToggle.Font = Enum.Font.GothamBold
+PreventDropToggle.TextSize = 11
+PreventDropToggle.Parent = ControlPanel
+
+local PreventDropCorner = Instance.new("UICorner")
+PreventDropCorner.CornerRadius = UDim.new(0, 6)
+PreventDropCorner.Parent = PreventDropToggle
+
+-- Status Bar Log
+local StatusLog = Instance.new("TextLabel")
+StatusLog.Size = UDim2.new(1, -20, 0, 25)
+StatusLog.Position = UDim2.new(0, 10, 0, 202)
+StatusLog.BackgroundTransparency = 1
+StatusLog.Text = "Trạng thái: Sẵn sàng..."
+StatusLog.TextColor3 = Color3.fromRGB(150, 150, 150)
+StatusLog.Font = Enum.Font.GothamMedium
+StatusLog.TextSize = 11
+StatusLog.Parent = ControlPanel
+
+-- ====================================================================
+-- DROPDOWN MENU INTERACTION
+-- ====================================================================
+local DropdownList = Instance.new("ScrollingFrame")
+DropdownList.Size = UDim2.new(1, -20, 0, 120)
+DropdownList.Position = UDim2.new(0, 10, 0, 68)
+DropdownList.BackgroundColor3 = Color3.fromRGB(15, 18, 28)
+DropdownList.BorderSizePixel = 1
+DropdownList.BorderColor3 = Color3.fromRGB(0, 229, 255)
+DropdownList.Visible = false
+DropdownList.ZIndex = 10
+DropdownList.Parent = ControlPanel
+
+local DropLayout = Instance.new("UIListLayout")
+DropLayout.SortOrder = Enum.SortOrder.LayoutOrder
+DropLayout.Parent = DropdownList
+
+local function RefreshDropdown()
+    for _, child in ipairs(DropdownList:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+
+    ScanMapEntities()
+
+    for _, name in ipairs(EggLocations) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 0, 28)
+        btn.BackgroundColor3 = Color3.fromRGB(22, 26, 40)
+        btn.Text = name
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.Font = Enum.Font.GothamMedium
+        btn.TextSize = 11
+        btn.ZIndex = 11
+        btn.Parent = DropdownList
+
+        btn.MouseButton1Click:Connect(function()
+            Config.SelectedEgg = name
+            SelectBtn.Text = "Đã Chọn: " .. name
+            SelectedPetLabel.Text = "Trứng Chọn: " .. name
+            PetVisualIcon.Text = name .. "\n[ Đã Xác Nhận Vị Trí ]"
+            DropdownList.Visible = false
+        end)
+    end
+end
+
+SelectBtn.MouseButton1Click:Connect(function()
+    DropdownList.Visible = not DropdownList.Visible
+    if DropdownList.Visible then
+        RefreshDropdown()
+    end
 end)
 
--- 3. Tab Cài đặt
-local settingSection = tab3:addSection("Hệ thống")
-settingSection:addButton("Đóng Menu / Hủy Script", function()
-    window:Teardown() -- Đóng UI
+-- Toggle Controls
+AntiKbToggle.MouseButton1Click:Connect(function()
+    Config.AntiKnockback = not Config.AntiKnockback
+    if Config.AntiKnockback then
+        AntiKbToggle.BackgroundColor3 = Color3.fromRGB(35, 140, 75)
+        AntiKbToggle.Text = "CHỐNG Quái Đánh Văng: [BẬT]"
+    else
+        AntiKbToggle.BackgroundColor3 = Color3.fromRGB(160, 40, 40)
+        AntiKbToggle.Text = "CHỐNG Quái Đánh Văng: [TẮT]"
+    end
 end)
 
--- Hiển thị thông báo khi load xong script
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Chilli Hub",
-    Text = "Load giao diện thành công!",
-    Duration = 4
-})
+PreventDropToggle.MouseButton1Click:Connect(function()
+    Config.PreventDrop = not Config.PreventDrop
+    if Config.PreventDrop then
+        PreventDropToggle.BackgroundColor3 = Color3.fromRGB(35, 140, 75)
+        PreventDropToggle.Text = "CHỐNG RỚT TRỨNG: [BẬT]"
+    else
+        PreventDropToggle.BackgroundColor3 = Color3.fromRGB(160, 40, 40)
+        PreventDropToggle.Text = "CHỐNG RỚT TRỨNG: [TẮT]"
+    end
+end)
+
+-- ====================================================================
+-- TELEPORT & EGG STEAL EXECUTION LOGIC
+-- ====================================================================
+local function FindTargetInstance(name)
+    for _, obj in ipairs(CoreServices.Workspace:GetDescendants()) do
+        if obj.Name == name or obj.Name:find(name) then
+            if obj:IsA("BasePart") then return obj end
+            if obj:IsA("Model") then return obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart") end
+        end
+    end
+    return nil
+end
+
+local function FireInteractPrompts(target)
+    for _, prompt in ipairs(target:GetDescendants()) do
+        if prompt:IsA("ProximityPrompt") then
+            fireproximityprompt(prompt)
+        end
+    end
+end
+
+TeleportBtn.MouseButton1Click:Connect(function()
+    if Config.SelectedEgg == "" then
+        StatusLog.Text = "Vui lòng chọn Trứng/Đảo trước!"
+        StatusLog.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
+
+    if not RootPart or not Character then return end
+
+    StatusLog.Text = "Đang lưu vị trí nhà gốc..."
+    StatusLog.TextColor3 = Color3.fromRGB(255, 215, 0)
+    Config.SavedPosition = RootPart.CFrame
+
+    local targetPart = FindTargetInstance(Config.SelectedEgg)
+
+    if targetPart then
+        StatusLog.Text = "Đang dịch chuyển đến: " .. Config.SelectedEgg
+        StatusLog.TextColor3 = Color3.fromRGB(0, 229, 255)
+
+        -- Smooth Teleport
+        local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tween = CoreServices.TweenService:Create(RootPart, tweenInfo, {CFrame = targetPart.CFrame * CFrame.new(0, 3, 0)})
+        tween:Play()
+        tween.Completed:Wait()
+
+        task.wait(0.2)
+        StatusLog.Text = "Đang lấy trứng..."
+        FireInteractPrompts(targetPart.Parent or targetPart)
+
+        task.wait(Config.StealSpeed)
+
+        -- Teleport back home
+        StatusLog.Text = "Bay về lại căn cứ..."
+        if Config.SavedPosition then
+            local returnTween = CoreServices.TweenService:Create(RootPart, tweenInfo, {CFrame = Config.SavedPosition})
+            returnTween:Play()
+            returnTween.Completed:Wait()
+        end
+
+        StatusLog.Text = "Hoàn tất cướp trứng thành công!"
+        StatusLog.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        StatusLog.Text = "Không tìm thấy tọa độ mục tiêu!"
+        StatusLog.TextColor3 = Color3.fromRGB(255, 50, 50)
+    end
+end)
+
+-- UI Loop Update Data Monitor
+CoreServices.RunService.Heartbeat:Connect(function()
+    MoneyLabel.Text = "Tiền: $" .. GetPlayerMoney()
+end)
+
+print("[LIGHTNING HUB] Executed Successfully.")
